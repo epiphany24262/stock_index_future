@@ -53,7 +53,7 @@ FIGURE_CAPTIONS = {
     ),
     "fig_oos_validation.png": (
         "样本外验证",
-        "IC 按 60/40 时间划分的训练期和测试期净值对比。测试期表现好于训练期，但测试期最大回撤仍达 -54.12%，不应解读为策略已通过样本外检验。",
+        "IC 按 60/40 时间划分的训练期和测试期净值对比。测试期表现好于训练期，但测试期最大回撤仍达 -54.12%，不应解读为策略已通过样本外检验。IM 仅 872 个交易日，样本过短无法形成稳定滚动窗口，不做样本外拆分。",
     ),
     "fig_regime_segmentation.png": (
         "市场状态分段分析",
@@ -103,12 +103,11 @@ TABLE_CAPTIONS = [
     ("样本外验证结果", "IC 按时间划分的训练期与测试期绩效对比。"),
     ("市场状态分段绩效", "按市场方向、贴水深度和波动率水平三个维度分段的 Always 策略绩效。"),
     ("风险控制版本绩效对比", "比较原始策略、波动率目标和回撤控制版本的收益与回撤。"),
-    ("代表性布林带参数下的信号统计", "展示跨期套利在代表性参数下的信号触发率和方向正确率。"),
-    ("跨期套利信号拆解", "拆解跨期套利信号的理论获利空间、T+1 执行滞后损益和成本结构。"),
+    ("跨期套利信号统计", "展示跨期套利在代表性布林带参数下的信号触发率与方向正确率。"),
     ("Bootstrap 显著性检验", "Block Bootstrap 重采样下的 Sharpe 差异分布、置信区间和 p 值。"),
     ("无截距收益归因", "将策略日收益按无截距模型拆解为指数驱动和残差两部分。"),
-    ("有截距 CAPM 归因", "加入截距项后的日频 CAPM 归因，α 衡量扣除指数 beta 后的平均日超额。"),
-    ("月度收益 CAPM 归因", "用月度收益替代日收益进行有截距 CAPM 回归，作为日频结果的稳健性检查。"),
+    ("有截距 CAPM 归因（日频）", "加入截距项后的日频 CAPM 归因，α 衡量扣除指数 beta 后的平均日超额。"),
+    ("有截距 CAPM 归因（月频）", "用月度收益替代日收益进行有截距 CAPM 回归，作为日频结果的稳健性检查。"),
     ("图表清单", "报告中全部 15 张图表的编号、文件名和内容说明。"),
 ]
 
@@ -472,6 +471,13 @@ def add_table_caption(doc: Document, table_no: int):
     add_inline_runs(p, f"表 {table_no} {title}：{note}", size_pt=10.5, base_bold=True, color=MUTED_COLOR)
 
 
+def add_source_line(doc: Document, text: str = "资料来源：IC/IM 期货与指数数据，本报告计算"):
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    set_compact_spacing(p, before=0, after=6)
+    add_inline_runs(p, text, size_pt=8.5, color=MUTED_COLOR)
+
+
 def resolve_image(rel_path: str) -> Path:
     raw = rel_path.strip().replace("\\", "/")
     path = REPORT_MD_PATH.parent / raw
@@ -511,6 +517,7 @@ def add_image(doc: Document, img_path: Path, figure_no: int, alt_text: str = "")
         (alt_text or img_path.stem, "展示报告正文对应分析结果。"),
     )
     add_figure_caption(doc, figure_no, title, note)
+    add_source_line(doc)
 
 
 def is_table_block(lines: list[str], idx: int) -> bool:
@@ -592,6 +599,7 @@ def add_table(doc: Document, header: list[str], rows: list[list[str]], table_no:
 
     spacer = doc.add_paragraph()
     set_compact_spacing(spacer, after=2)
+    add_source_line(doc)
 
 
 def build_docx() -> Path:
