@@ -401,7 +401,7 @@ def add_heading(doc: Document, text: str, level: int):
 def add_text_paragraph(doc: Document, text: str, *, center: bool = False, size_pt: float = 12):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else WD_ALIGN_PARAGRAPH.JUSTIFY
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
     p.paragraph_format.line_spacing = Pt(BODY_LINE_SPACING_PT)
     p.paragraph_format.space_after = Pt(6)
     if not center:
@@ -419,7 +419,7 @@ def add_lead_line(doc: Document, text: str):
 def add_bullet(doc: Document, text: str):
     p = doc.add_paragraph(style="List Bullet")
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
     p.paragraph_format.line_spacing = Pt(BODY_LINE_SPACING_PT)
     p.paragraph_format.space_after = Pt(3)
     add_inline_runs(p, text, size_pt=12)
@@ -430,7 +430,7 @@ def add_numbered_item(doc: Document, number: str, text: str):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.left_indent = Cm(0.74)
     p.paragraph_format.first_line_indent = Cm(-0.44)
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
     p.paragraph_format.line_spacing = Pt(BODY_LINE_SPACING_PT)
     p.paragraph_format.space_after = Pt(3)
     add_inline_runs(p, f"{number}. {text}", size_pt=12)
