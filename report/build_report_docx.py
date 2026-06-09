@@ -483,21 +483,13 @@ def add_caption(doc: Document, text: str):
     add_inline_runs(p, text, size_pt=10.5, base_bold=True, color=MUTED_COLOR)
 
 
-def add_figure_caption(doc: Document, figure_no: int, title: str, note: str):
+def add_figure_caption(doc: Document, figure_no: int, title: str):
     title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title_p.paragraph_format.keep_together = True
     title_p.paragraph_format.keep_with_next = True
-    set_compact_spacing(title_p, after=1)
+    set_compact_spacing(title_p, after=4)
     add_inline_runs(title_p, f"图 {figure_no} {title}", size_pt=10.5, base_bold=True, color=ACCENT_COLOR)
-
-    note_p = doc.add_paragraph()
-    note_p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    note_p.paragraph_format.left_indent = Cm(0.75)
-    note_p.paragraph_format.right_indent = Cm(0.75)
-    note_p.paragraph_format.keep_together = True
-    set_compact_spacing(note_p, after=8)
-    add_inline_runs(note_p, f"说明：{note}", size_pt=10, color=MUTED_COLOR)
 
 
 def add_table_caption(doc: Document, table_no: int):
@@ -512,7 +504,7 @@ def add_table_caption(doc: Document, table_no: int):
     add_inline_runs(p, f"表 {table_no} {title}：{note}", size_pt=10.5, base_bold=True, color=MUTED_COLOR)
 
 
-def add_source_line(doc: Document, text: str = "资料来源：IC/IM 期货与指数数据，本报告计算"):
+def add_source_line(doc: Document, text: str = "资料来源：IC/IM 期货与指数数据，本文计算"):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     set_compact_spacing(p, before=0, after=6)
@@ -553,11 +545,11 @@ def add_image(doc: Document, img_path: Path, figure_no: int, alt_text: str = "")
     else:
         run.add_picture(str(img_path), height=Cm(height_cm))
 
-    title, note = FIGURE_CAPTIONS.get(
+    title, _note = FIGURE_CAPTIONS.get(
         img_path.name,
         (alt_text or img_path.stem, "展示报告正文对应分析结果。"),
     )
-    add_figure_caption(doc, figure_no, title, note)
+    add_figure_caption(doc, figure_no, title)
     add_source_line(doc)
 
 
