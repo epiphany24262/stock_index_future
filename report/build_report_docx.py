@@ -64,12 +64,16 @@ FIGURE_CAPTIONS = {
         "比较原始策略、波动率目标 15% 和回撤控制 20% 三个版本的净值走势。风控降低了回撤但收益同步被削弱，策略的贴水补偿本身不够厚，经不起降杠杆和频繁调仓的摩擦。",
     ),
     "fig_spread.png": (
-        "跨期价差与布林带",
-        "展示近月-次近月价差序列及其滚动均值和布林带边界。价差突破布林带后并不总是快速回归，日频下价差回归幅度较小，扣除双边成本后很难留下足够利润。",
+        "期限结构斜率与交易边界",
+        "用近月与次近月的到期时间差对价差进行标准化，刻画单位期限上的期限结构斜率。信号集中在斜率明显偏离滚动均值的位置，IM 的样本内表现略好，但交易厚度仍然有限。",
     ),
-    "fig_spread_failure.png": (
-        "跨期套利信号拆解",
-        "展示代表性布林带参数下的信号分布和 T+1 执行后的实际收益。日频收盘价下可捕捉偏离太少，T+1 执行进一步错过短暂回归机会。",
+    "fig_calendar_nav.png": (
+        "优化后跨期策略净值",
+        "固定采用期限结构斜率、60 日均值和 K=2.4 的布林带规则。IC 基本接近盈亏平衡，IM 有弱正收益，但净值并不平滑，说明跨期部分更适合作为补充检验，而不是报告的主要收益来源。",
+    ),
+    "fig_calendar_leverage.png": (
+        "跨期套利杠杆压力测试",
+        "在同一条跨期策略净收益序列上测试 1 倍、2 倍、3 倍和 5 倍杠杆。杠杆可以放大 IM 的样本内收益，也同步放大回撤和保证金占用；IC 在放大后反而更容易暴露成本和噪声。",
     ),
     "fig_bootstrap.png": (
         "Bootstrap 显著性检验",
@@ -103,12 +107,13 @@ TABLE_CAPTIONS = [
     ("样本外验证结果", "IC 按时间划分的训练期与测试期绩效对比。"),
     ("市场状态分段绩效", "按市场方向、贴水深度和波动率水平三个维度分段的 Always 策略绩效。"),
     ("风险控制版本绩效对比", "比较原始策略、波动率目标和回撤控制版本的收益与回撤。"),
-    ("跨期套利信号统计", "展示跨期套利在代表性布林带参数下的信号触发率与方向正确率。"),
+    ("跨期套利固定规则结果", "展示期限结构斜率规则在固定参数下的收益、风险、信号触发率和方向正确率。"),
+    ("跨期套利杠杆压力测试", "在同一跨期策略收益序列上放大杠杆，观察年化收益、回撤、保证金占用和名义敞口的变化。"),
     ("Bootstrap 显著性检验", "Block Bootstrap 重采样下的 Sharpe 差异分布、置信区间和 p 值。"),
     ("无截距收益归因", "将策略日收益按无截距模型拆解为指数驱动和残差两部分。"),
     ("有截距 CAPM 归因（日频）", "加入截距项后的日频 CAPM 归因，α 衡量扣除指数 beta 后的平均日超额。"),
     ("有截距 CAPM 归因（月频）", "用月度收益替代日收益进行有截距 CAPM 回归，作为日频结果的稳健性检查。"),
-    ("图表清单", "报告中全部 15 张图表的编号、文件名和内容说明。"),
+    ("图表清单", "报告中全部 16 张图表的编号、文件名和内容说明。"),
 ]
 
 
@@ -236,6 +241,41 @@ def set_compact_spacing(paragraph, *, before: float = 0, after: float = 0):
     paragraph.paragraph_format.space_after = Pt(after)
 
 
+def add_word_field(paragraph, instruction: str, placeholder: str = ""):
+    """Insert a Word field, such as TOC or PAGE, using raw OOXML."""
+    run = paragraph.add_run()
+
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = instruction
+    separate = OxmlElement("w:fldChar")
+    separate.set(qn("w:fldCharType"), "separate")
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+
+    run._r.append(begin)
+    run._r.append(instr)
+    run._r.append(separate)
+    if placeholder:
+        text = OxmlElement("w:t")
+        text.text = placeholder
+        run._r.append(text)
+    run._r.append(end)
+    set_run_font(run, size_pt=10.5)
+    return run
+
+
+def enable_update_fields_on_open(doc: Document):
+    settings = doc.settings.element
+    update_fields = settings.find(qn("w:updateFields"))
+    if update_fields is None:
+        update_fields = OxmlElement("w:updateFields")
+        settings.append(update_fields)
+    update_fields.set(qn("w:val"), "true")
+
+
 def add_page_number(paragraph):
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.space_after = Pt(0)
@@ -243,19 +283,7 @@ def add_page_number(paragraph):
     head = paragraph.add_run("第 ")
     set_run_font(head, size_pt=9.5, color=MUTED_COLOR)
 
-    begin = OxmlElement("w:fldChar")
-    begin.set(qn("w:fldCharType"), "begin")
-    instr = OxmlElement("w:instrText")
-    instr.set(qn("xml:space"), "preserve")
-    instr.text = " PAGE "
-    end = OxmlElement("w:fldChar")
-    end.set(qn("w:fldCharType"), "end")
-
-    field_run = paragraph.add_run()
-    set_run_font(field_run, size_pt=9.5, color=MUTED_COLOR)
-    field_run._r.append(begin)
-    field_run._r.append(instr)
-    field_run._r.append(end)
+    add_word_field(paragraph, " PAGE ", "1")
 
     tail = paragraph.add_run(" 页")
     set_run_font(tail, size_pt=9.5, color=MUTED_COLOR)
@@ -269,12 +297,31 @@ def add_header(paragraph):
 
 
 def configure_document(doc: Document):
+    enable_update_fields_on_open(doc)
+
     styles = doc.styles
     normal = styles["Normal"]
     normal.font.name = "Times New Roman"
     normal.font.size = Pt(12)
     normal.font.color.rgb = BODY_COLOR
     normal._element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+
+    heading_specs = {
+        "Heading 1": (14.5, "黑体", 12, 6),
+        "Heading 2": (12.5, "黑体", 8, 4),
+        "Heading 3": (11.5, "黑体", 6, 3),
+    }
+    for style_name, (size_pt, east_font, before, after) in heading_specs.items():
+        style = styles[style_name]
+        style.font.name = "Times New Roman"
+        style.font.size = Pt(size_pt)
+        style.font.bold = True
+        style.font.color.rgb = ACCENT_COLOR
+        style._element.rPr.rFonts.set(qn("w:eastAsia"), east_font)
+        style.paragraph_format.space_before = Pt(before)
+        style.paragraph_format.space_after = Pt(after)
+        style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+        style.paragraph_format.line_spacing = 1
 
     section = doc.sections[0]
     section.page_width = Cm(21.0)
@@ -349,28 +396,14 @@ def add_cover_page(doc: Document):
 def add_navigation_page(doc: Document):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_after = Pt(8)
-    run = p.add_run("报告结构")
+    p.paragraph_format.space_after = Pt(12)
+    run = p.add_run("目录")
     set_run_font(run, size_pt=18, bold=True, east_asia_font="黑体")
 
-    sections = [
-        "摘要：核心结论与收益口径",
-        "1. 数据与回测设定",
-        "2. 基差因子",
-        "3. 吃贴水策略",
-        "4. 跨期套利",
-        "5. IC-IM 组合策略",
-        "6. 统计检验与收益归因",
-        "7. 补充分析",
-        "8. 风险提示",
-        "9. 结论",
-        "附录：图表清单",
-    ]
-    for item in sections:
-        p = doc.add_paragraph()
-        p.paragraph_format.left_indent = Cm(2.0)
-        p.paragraph_format.space_after = Pt(4)
-        add_inline_runs(p, item, size_pt=12.5, base_bold=True)
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(4)
+    p.paragraph_format.space_after = Pt(4)
+    add_word_field(p, ' TOC \\o "1-2" \\h \\z \\u ', "打开文档后目录将自动更新")
 
     doc.add_page_break()
 
@@ -379,14 +412,21 @@ def add_heading(doc: Document, text: str, level: int):
     if level == 2 and re.match(r"^\d+\.\s", text) and not text.startswith("1. "):
         doc.add_section(WD_SECTION_START.NEW_PAGE)
 
-    p = doc.add_paragraph()
     if level == 1:
+        p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         p.paragraph_format.space_before = Pt(10)
         p.paragraph_format.space_after = Pt(16)
         add_inline_runs(p, text, size_pt=20, base_bold=True, east_asia_font="黑体")
         return
 
+    if level == 2:
+        word_level = 1
+    elif level == 3 and re.match(r"^\d+\.\d+", text):
+        word_level = 2
+    else:
+        word_level = 3
+    p = doc.add_paragraph(style=f"Heading {word_level}")
     p.paragraph_format.space_before = Pt(12 if level == 2 else 8)
     p.paragraph_format.space_after = Pt(6 if level in (2, 3) else 3)
     if level == 2:
@@ -401,7 +441,7 @@ def add_heading(doc: Document, text: str, level: int):
 def add_text_paragraph(doc: Document, text: str, *, center: bool = False, size_pt: float = 12):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else WD_ALIGN_PARAGRAPH.JUSTIFY
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
     p.paragraph_format.line_spacing = Pt(BODY_LINE_SPACING_PT)
     p.paragraph_format.space_after = Pt(6)
     if not center:
@@ -419,7 +459,7 @@ def add_lead_line(doc: Document, text: str):
 def add_bullet(doc: Document, text: str):
     p = doc.add_paragraph(style="List Bullet")
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
     p.paragraph_format.line_spacing = Pt(BODY_LINE_SPACING_PT)
     p.paragraph_format.space_after = Pt(3)
     add_inline_runs(p, text, size_pt=12)
@@ -430,7 +470,7 @@ def add_numbered_item(doc: Document, number: str, text: str):
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     p.paragraph_format.left_indent = Cm(0.74)
     p.paragraph_format.first_line_indent = Cm(-0.44)
-    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.AT_LEAST
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
     p.paragraph_format.line_spacing = Pt(BODY_LINE_SPACING_PT)
     p.paragraph_format.space_after = Pt(3)
     add_inline_runs(p, f"{number}. {text}", size_pt=12)
