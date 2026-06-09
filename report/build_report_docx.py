@@ -387,7 +387,7 @@ def add_cover_page(doc: Document):
 
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run("课程项目报告")
+    run = p.add_run("金融工程策略研究")
     set_run_font(run, size_pt=12, color=MUTED_COLOR)
 
     doc.add_page_break()
