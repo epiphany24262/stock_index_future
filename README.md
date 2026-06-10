@@ -1,142 +1,107 @@
 # 股指期货吃贴水与跨期套利策略研究
 
-本项目研究中证 500 股指期货（IC）和中证 1000 股指期货（IM）的两类交易思路：
+本项目研究中证 500 股指期货（IC）和中证 1000 股指期货（IM）的吃贴水策略、跨期套利策略及二者的组合效果。研究从原始 Excel 数据出发，在 Jupyter Notebook 中完成数据清洗、因子构造、回测、统计检验、收益归因和图表输出，并形成 Word 研究报告。
 
-1. **吃贴水策略**：长期持有贴水期货合约并在到期前展期，观察是否能获得相对现货指数的补偿。
-2. **跨期套利策略**：按真实到期日构建近月与次近月合约，使用年化期限结构斜率检验日频、T+1 执行条件下是否存在可交易机会，并补充杠杆压力测试。
+报告采用偏券商金工研报的口径：结论不过度包装，重点区分“样本内表现”“统计检验结果”和“经济解释”。吃贴水策略在样本内相对指数有明显收益增厚，但本质仍是带有权益方向暴露的期货多头替代，并不能简单理解为市场中性套利。
 
-研究从原始 Excel 数据出发，在 Jupyter Notebook 中完成数据清洗、因子构造、回测、统计检验、收益归因和图表输出。报告采用较克制的结论口径：样本内吃贴水策略确实有超额收益表现，但其风险暴露较高，统计显著性不足，不能简单解释为稳定独立 alpha。
+## 核心结论
 
-## 项目亮点
+| 项目 | IC | IM |
+|---|---:|---:|
+| Always 年化收益 | 9.60% | 15.78% |
+| 指数年化收益 | 0.83% | 5.31% |
+| Always Sharpe | 0.23 | 0.42 |
+| Always 最大回撤 | -59.39% | -46.31% |
+| Bootstrap SR 差异 95%CI | [0.0452, 0.5907] | [0.1284, 0.4731] |
+| Bootstrap p 值 | 0.023 | <0.001 |
+| Always β | 0.9616 | 1.2387 |
+| 残差年化 | 9.62% | 9.38% |
 
-- 使用真实期货合约代码回测，不用连续合约直接充当交易标的。
-- 交易信号在 T 日收盘后生成，T+1 收盘价成交，避免使用未来信息。
-- 回测中包含手续费、滑点、展期成本和逐日盯市。
-- 对策略结果做了 Bootstrap 检验、样本外观察、市场状态分段、CAPM 归因和成本压力测试。
-- Notebook 与报告中的图表、表格和结论保持一致，可直接复现。
+主要判断：
 
-## 主要结论
+- 吃贴水策略相对指数有收益增厚，来源主要是贴水结构下的基差收敛与展期补偿。
+- 策略回撤较深，IC Always 最大回撤接近 -60%，不能定位为低波动或绝对收益策略。
+- 无截距归因显示 Always 策略 β 接近或高于 1，说明方向暴露是收益解释中不可忽略的部分。
+- 跨期套利在当前日频 T+1 框架下表现较弱，64 组参数组合均未取得正 Sharpe；加杠杆不会改变收益来源，只会同步放大亏损和回撤。
+- IC 与 IM 吃贴水策略日收益高度相关，品种分散化价值有限，组合层面的改进更依赖引入低相关策略。
 
-| 项目 | 结论 |
-|---|---|
-| 吃贴水策略 | IC 和 IM 的 Always 策略在样本期内均跑赢对应指数，但回撤较大。 |
-| 统计显著性 | Block Bootstrap 检验显示 Sharpe 差异置信区间覆盖 0，不能认为策略显著优于指数。 |
-| 风险来源 | 收益高度依赖权益市场方向，贴水补偿不能完全覆盖下跌风险。 |
-| 基差阈值 | B<-1.5% 策略可以降低回撤，但也会牺牲部分上涨阶段收益。 |
-| 跨期套利 | 期限结构斜率策略在 IM 上有弱正收益，IC 基本接近打平；杠杆能放大 IM 样本内收益，但不能改善信号稳定性。 |
-| 实务判断 | 更适合作为指数多头增强工具，而不是低风险绝对收益套利策略。 |
-
-## 策略表现摘要
-
-| 策略 | 年化收益 | 年化波动 | Sharpe | 最大回撤 | 累计收益 |
-|---|---:|---:|---:|---:|---:|
-| IC Always | 9.62% | 30.05% | 0.22 | -61.38% | 172.49% |
-| IC B<-1.5% | 7.04% | 17.81% | 0.23 | -34.85% | 110.21% |
-| IC 指数 | 0.83% | 24.83% | -0.09 | -65.20% | 9.43% |
-| IM Always | 15.88% | 32.71% | 0.39 | -50.81% | 70.08% |
-| IM B<-1.5% | 10.83% | 12.74% | 0.61 | -12.82% | 44.84% |
-| IM 指数 | 5.31% | 23.74% | 0.10 | -41.60% | 20.50% |
-
-> 以上结果为历史样本回测结果，不构成投资建议。策略最大回撤较高，实盘使用前仍需进一步检查保证金占用、流动性、冲击成本和组合层面的风险预算。
-
-## 结果展示
-
-### 策略净值
-
-![策略净值曲线](report/assets/fig_nav.png)
-
-### 回撤表现
-
-![回撤曲线](report/assets/fig_drawdown.png)
-
-### 统计检验
-
-![Bootstrap 检验](report/assets/fig_bootstrap.png)
-
-### 收益归因
-
-![CAPM 收益归因](report/assets/fig_capm_attribution.png)
-
-完整图表见 `report/assets/`，包括年度收益、参数热力图、市场状态分段、风险控制版本、成本压力测试、IC-IM 相关性、期限结构斜率、优化后跨期策略净值和跨期杠杆压力测试。
-
-## 目录结构
+## 项目结构
 
 ```text
-stock_index_future/
-├── data/
-│   ├── 000852.xlsx
-│   ├── 000905.xlsx
-│   ├── ic_data.xlsx
-│   └── im_data.xlsx
-├── notebooks/
-│   └── 股指期货套利策略研究.ipynb
-├── output/
-│   ├── figures/
-│   ├── tables/
-│   └── validation_summary.csv
-├── report/
-│   ├── assets/
-│   ├── report.md
-│   └── 股指期货套利策略研究报告.docx
-└── README.md
+data/
+  000852.xlsx
+  000905.xlsx
+  ic_data.xlsx
+  im_data.xlsx
+
+notebooks/
+  股指期货套利策略研究.ipynb
+
+output/
+  figures/
+    fig_roll_yield.png
+    fig_nav.png
+    fig_annual.png
+    fig_drawdown.png
+    fig_heatmap.png
+    fig_calendar_leverage.png
+    fig_correlation.png
+    fig_bootstrap.png
+    fig_attribution.png
+    fig_cost_stress.png
+  tables/
+    strategy_summary.csv
+    combination_results.csv
+    spread_scan.csv
+    spread_leverage.csv
+    bootstrap_validation.csv
+    attribution_summary.csv
+  validation_summary.csv
+
+report/
+  report.md
+  build_report_docx.py
+  assets/
+  股指期货套利策略研究报告.docx
 ```
 
-## 数据说明
+## 复现方式
 
-| 文件 | 内容 |
-|---|---|
-| `data/ic_data.xlsx` | IC 期货合约行情与主力标记 |
-| `data/im_data.xlsx` | IM 期货合约行情与主力标记 |
-| `data/000905.xlsx` | 中证 500 指数行情 |
-| `data/000852.xlsx` | 中证 1000 指数行情 |
-
-如果公开仓库不便上传原始数据，可以保留 `data/` 目录结构，并在本地补齐同名文件后运行 Notebook。
-
-## 复现方法
-
-建议使用 Python 3.10 或以上版本。
+在项目根目录执行：
 
 ```bash
-pip install jupyter numpy pandas scipy statsmodels matplotlib openpyxl
+python -m jupyter nbconvert --to notebook --execute --inplace "notebooks/股指期货套利策略研究.ipynb" --ExecutePreprocessor.timeout=1200
 ```
 
-执行 Notebook：
+本地环境中也可以使用：
 
 ```bash
-jupyter nbconvert --to notebook --execute --inplace "notebooks/股指期货套利策略研究.ipynb" --ExecutePreprocessor.timeout=1200
+D:\Anaconda\envs\QuantEnv\python.exe -m jupyter nbconvert --to notebook --execute --inplace "notebooks/股指期货套利策略研究.ipynb" --ExecutePreprocessor.timeout=1200
 ```
 
-执行后会生成：
+执行完成后会更新 `output/figures/`、`output/tables/` 和 `output/validation_summary.csv`。当前项目不依赖 `.pkl` 缓存文件。
 
-- `output/figures/`：策略图表。
-- `output/tables/`：策略绩效、交易流水和归因结果。
-- `output/validation_summary.csv`：复现检查结果。
+## 主要图表
 
-## 方法框架
+- `fig_roll_yield.png`：主力合约持有段收益分布
+- `fig_nav.png`：策略净值曲线
+- `fig_annual.png`：年度收益拆分
+- `fig_drawdown.png`：回撤路径
+- `fig_heatmap.png`：参数敏感性热力图
+- `fig_calendar_leverage.png`：跨期套利杠杆压力测试
+- `fig_correlation.png`：IC-IM 日收益相关性
+- `fig_bootstrap.png`：Bootstrap 显著性检验
+- `fig_attribution.png`：收益归因分解
+- `fig_cost_stress.png`：交易成本压力测试
 
-1. **数据清洗**  
-   清理期货和指数数据字段，筛选真实可交易合约，按主力标记构建主力合约序列。
+## 交付文件
 
-2. **基差与展期收益计算**  
-   计算期货相对现货指数的基差率、展期收益和合约切换信息，检查基差均值回归特征。
-
-3. **吃贴水策略回测**  
-   测试 Always 持有和基差阈值择时两类策略，加入交易成本和换仓规则。
-
-4. **跨期套利回测**  
-   按真实到期日构造近月-次近月期限结构斜率，扫描趋势/均值回归规则，并测试不同杠杆倍数下的收益、回撤与保证金占用。
-
-5. **稳健性与归因**  
-   使用 Bootstrap、样本外观察、市场状态切分、CAPM 回归和成本压力测试评估结果可靠性。
-
-## 报告文件
-
-- Markdown 报告：`report/report.md`
-- Word 报告：`report/股指期货套利策略研究报告.docx`
-- 核心 Notebook：`notebooks/股指期货套利策略研究.ipynb`
-
-如果只阅读结论，建议先看 Word 报告；如果需要检查计算过程和复现结果，建议打开 Notebook。
+- 研究报告：`report/股指期货套利策略研究报告.docx`
+- Markdown 版本：`report/report.md`
+- 研究过程：`notebooks/股指期货套利策略研究.ipynb`
+- 结果表：`output/tables/`
+- 复现检查：`output/validation_summary.csv`
 
 ## 风险提示
 
-本项目仅用于量化研究和教学展示。股指期货交易存在杠杆、保证金、流动性和极端行情风险。回测结果依赖历史样本和交易假设，不能保证未来收益。
+本项目基于历史样本回测，不构成投资建议。股指期货策略受权益市场方向、保证金制度、交易限制、分红影响、贴水结构变化和样本区间选择影响较大。IM 样本自 2022 年开始，覆盖周期较短，相关结论应低于 IC 样本的置信度。
